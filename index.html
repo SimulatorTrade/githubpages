@@ -1,1 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trade Simulator</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        #game-container {
+            width: 90%;
+            max-width: 400px;
+            background: #fff;
+            border: 2px solid #333;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        #balance {
+            font-size: 24px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .item img {
+            width: 32px;
+            height: 32px;
+            margin-right: 8px;
+        }
+
+        .item button {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+        }
+
+        .item button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        #auth-container {
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        #auth-container input {
+            margin: 4px;
+            padding: 4px;
+        }
+
+        #admin-panel {
+            margin-top: 16px;
+            padding: 8px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+
+        #admin-panel input {
+            margin: 4px;
+            padding: 4px;
+        }
+
+        #admin-panel button {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007BFF;
+            color: white;
+            cursor: pointer;
+        }
+
+        #admin-panel button:disabled {
+            background-color: #ccc;
+        }
+
+        #resale-market-container {
+            margin-top: 16px;
+        }
+
+        #resale-market .item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div id="auth-container">
+        <div id="signup-login">
+            <input type="text" id="username" placeholder="Username">
+            <input type="password" id="password" placeholder="Password">
+            <input type="email" id="email" placeholder="Email">
+            <button onclick="signUp()">Sign Up</button>
+            <button onclick="logIn()">Log In</button>
+        </div>
+        <div id="welcome" style="display: none;">
+            Welcome, <span id="user-display"></span>!
+            <button onclick="logOut()">Log Out</button>
+            <button onclick="changePassword()">Change Password</button>
+            <button onclick="verifyEmail()">Verify Email</button>
+        </div>
+    </div>
+
+    <div id="game-container" style="display: none;">
+        <div id="balance">Balance: $100</div>
+        <div id="items-container"></div>
+        <div id="inventory-container">
+            <h3>Your Inventory</h3>
+            <div id="inventory"></div>
+        </div>
+        <div id="resale-market-container">
+            <h3>Resale Market</h3>
+            <div id="resale-market"></div>
+        </div>
+    </div>
+
+    <div id="admin-panel" style="display: none;">
+        <h3>Admin Panel</h3>
+        <input type="text" id="item-name" placeholder="Item Name">
+        <input type="number" id="item-price" placeholder="Item Price">
+        <input type="number" id="item-stock" placeholder="Item Stock">
+        <input type="text" id="item-image" placeholder="Image URL (.png or .svg)">
+        <button onclick="addItem()">Add Item</button>
+    </div>
+
+    <script>
+        const users = { Fixer: { password: "admin123", balance: 100, inventory: [], emailVerified: false, email: "", badge: "" } };
+        const resaleMarket = [];
+        let currentUser = null;
+        let balance = 100;
+        let inventory = [];
+        const items = [];
+
+        const balanceEl = document.getElementById("balance");
+        const itemsContainer = document.getElementById("items-container");
+        const inventoryContainer = document.getElementById("inventory");
+        const resaleMarketContainer = document.getElementById("resale-market");
+
+        function signUp() {
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+            const email = document.getElementById("email").value;
+            const usernameRegex = /^[a-zA-Z0-9.]{4,10}$/;
+            if (!usernameRegex.test(username)) {
+                alert("Username must be 4-10 characters and can only contain letters, numbers, and dots.");
+                return;
+            }
+            if (!password) {
+                alert("Please enter a password.");
+                return;
+            }
+            if (!email.includes("@")) {
+                alert("Please enter a valid email.");
+                return;
+            }
+            if (users[username]) {
+                alert("Username already exists");
+                return;
+            }
+            const badge = Object.keys(users).length < 10 ? "🌟 Early User" : "";
+            users[username] = { password, balance: 100, inventory: [], email, emailVerified: false, badge };
+            alert("Sign-up successful! Please log in.");
+        }
+
+        function logIn() {
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+            if (!users[username] || users[username].password !== password) {
+                alert("Invalid username or password");
+                return;
+            }
+            currentUser = username;
+            balance = users[username].balance;
+            inventory = users[username].inventory;
+            document.getElementById("signup-login").style.display = "none";
+            document.getElementById("welcome").style.display = "block";
+            document.getElementById("user-display").textContent = `${username} ${users[username].badge}`;
+            document.getElementById("game-container").style.display = "block";
+            if (username === "Fixer") {
+                document.getElementById("admin-panel").style.display = "block";
+            }
+            updateUI();
+            setInterval(() => {
+                if (currentUser) {
+                    balance += 50;
+                    updateUI();
+                }
+            }, 60000);
+        }
+
+        function logOut() {
+            users[currentUser].balance = balance;
+            users[currentUser].inventory = inventory;
+            currentUser = null;
+            document.getElementById("signup-login").style.display = "block";
+            document.getElementById("welcome").style.display = "none";
+            document.getElementById("game-container").style.display = "none";
+            document.getElementById("admin-panel").style.display = "none";
+        }
+
+        function changePassword() {
+            const newPassword = prompt("Enter your new password:");
+            if (newPassword && currentUser) {
+                users[currentUser].password = newPassword;
+                alert("Password changed successfully.");
+            }
+        }
+
+        function verifyEmail() {
+            if (!currentUser) return;
+            users[currentUser].emailVerified = true;
+            alert("Email verified! You received a free hat: 'No More Hakkas'.");
+            inventory.push({ name: "No More Hakkas", price: 0, image: "hat.png" });
+            updateUI();
+        }
+
+                function renderItems() {
+            itemsContainer.innerHTML = "";
+            items.forEach((item, index) => {
+                const itemDiv = document.createElement("div");
+                itemDiv.className = "item";
+                itemDiv.innerHTML = `
+                    <img src="${item.image}" alt="${item.name}">
+                    <span>${item.name} - $${item.price} (Stock: ${item.stock})</span>
+                    <button onclick="buyItem(${index})" ${item.stock <= 0 ? "disabled" : ""}>Buy</button>
+                `;
+                itemsContainer.appendChild(itemDiv);
+            });
+        }
+
+        function buyItem(index) {
+            const item = items[index];
+            if (balance >= item.price && item.stock > 0) {
+                balance -= item.price;
+                item.stock -= 1;
+                inventory.push(item);
+                updateUI();
+            } else {
+                alert(item.stock <= 0 ? "This item is out of stock." : "Insufficient balance.");
+            }
+        }
+
+        function updateUI() {
+            balanceEl.textContent = `Balance: $${balance}`;
+            inventoryContainer.innerHTML = "";
+            inventory.forEach((item) => {
+                const itemDiv = document.createElement("div");
+                itemDiv.className = "item";
+                itemDiv.innerHTML = `
+                    <img src="${item.image}" alt="${item.name}">
+                    <span>${item.name}</span>
+                `;
+                inventoryContainer.appendChild(itemDiv);
+            });
+            renderItems();
+        }
+
+        renderItems();
+    </script>
+</body>
+</html>
 
